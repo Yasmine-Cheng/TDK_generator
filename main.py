@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 import os
 import argparse
+import re
 from tqdm import trange
 from transformers import GPT2LMHeadModel, BertTokenizer, BartForConditionalGeneration, Text2TextGenerationPipeline
 
@@ -129,7 +130,7 @@ def generate(n_ctx, model, context, length, tokenizer, temperature=1, top_k=0, t
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', default='0,1,2,3', type=str, required=False, help='生成设备')
-    parser.add_argument('--length', default=-1, type=int, required=False, help='生成长度')
+    parser.add_argument('--length', default=70, type=int, required=False, help='生成长度')
     parser.add_argument('--batch_size', default=1, type=int, required=False, help='生成的batch size')
     parser.add_argument('--nsamples', default=10, type=int, required=False, help='生成几个样本')
     parser.add_argument('--temperature', default=1, type=float, required=False, help='生成温度')
@@ -148,7 +149,6 @@ def main():
     parser.add_argument('--repetition_penalty', default=1.0, type=float, required=False)
     parser.add_argument("--input", default='你不給我我是要預測什麼', type=str, required=True, help="可以給一些字詞，也可給一些短句~~")
 
-
     args = parser.parse_args()
     print('args:\n' + args.__repr__())
 
@@ -166,7 +166,7 @@ def main():
     topp = args.topp
     repetition_penalty = args.repetition_penalty
     data = args.input
-
+    
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     tokenizer = tokenization_bert.BertTokenizer(vocab_file=args.tokenizer_path)
@@ -184,7 +184,7 @@ def main():
         samples_file = open(args.save_samples_path + '/samples.txt', 'w', encoding='utf8')
     while True:
         # raw_text = args.prefix
-        raw_text = genius_generator('[MASK]'.join(data.split()), max_length=100, do_sample=True, num_beams=len(data))[0]['generated_text'].replace(' ','')
+        raw_text = genius_generator('[MASK]'.join(data.split()), max_length=150, do_sample=True, num_beams=len(data))[0]['generated_text'].replace(' ','')
         context_tokens = tokenizer.convert_tokens_to_ids(tokenizer.tokenize(raw_text))
         generated = 0
         print('input data:\n>>> ', data)
@@ -221,6 +221,32 @@ def main():
                     samples_file.write('\n')
                     samples_file.write('=' * 90)
                     samples_file.write('\n' * 2)
+                '''
+                if not text[-1]=='。' or text[-1]=='？' or text[-1]=='?':
+                    s = re.findall(r'[^\w\s]', text)
+                    new_text = text.split(s[-1])[-1]
+                    print(new_text)
+                    twice_text = genius_generator(new_text+'[MASK]', max_length=100, do_sample=True, num_beams=1)[0]['generated_text'].replace(' ','')
+                '''
+                tmp_final = re.findall(r'[^\w\s]', text[-1])
+                tmp = re.findall(r'[^\w\s]', text)
+
+                
+                if text[-1]=='。' or text[-1]=='？' or text[-1]=='?' or text[-1]=='！' or text[-1]=='!':
+                    twice_text = text
+                else:
+                    if text[-1]==tmp[-1]:
+                        twice_text = text
+                    else:
+                        if len(text.split(tmp[-1])[-1])>4:
+                            new_text = text.split(text[-1])[-1]
+                            print(new_text)
+                            twice_text = genius_generator(new_text+'[MASK]', max_length=100, do_sample=True, num_beams=1)[0]['generated_text'].replace(' ','')
+                            twice_text = '，'.join(text.split(text[-1])[:-1])+text[-1]+twice_text
+                        else:
+                            twice_text = '，'.join(text.split(tmp[-1])[:-1])+'。'
+                print('\n')
+                print("twice_text: ", twice_text)
         print("=" * 80)
         if generated == nsamples:
             # close file when finish writing.
