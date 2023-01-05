@@ -187,8 +187,8 @@ def main():
         raw_text = genius_generator('[MASK]'.join(data.split()), max_length=150, do_sample=True, num_beams=len(data))[0]['generated_text'].replace(' ','')
         context_tokens = tokenizer.convert_tokens_to_ids(tokenizer.tokenize(raw_text))
         generated = 0
-        print('input data:\n>>> ', data)
-        print('TITLE:\n>>> ', raw_text)
+        print('input data: ', data)
+        print('TITLE: ', raw_text)
         for _ in range(nsamples // batch_size):
             out = generate(
                 n_ctx=n_ctx,
@@ -214,7 +214,7 @@ def main():
                 info = "=" * 40 + " SAMPLE " + str(generated) + " " + "=" * 40 + "\n"
                 print(info)
                 text = ''.join(text).replace('##', '').strip()
-                print(text)
+                print("ori DESCRIPTION: ", text)
                 if args.save_samples:
                     samples_file.write(info)
                     samples_file.write(text)
@@ -246,7 +246,7 @@ def main():
                         else:
                             twice_text = '，'.join(text.split(tmp[-1])[:-1])+'。'
                 print('\n')
-                print("twice_text: ", twice_text)
+                print("final DESCRIPTION: : ", twice_text)
         print("=" * 80)
         if generated == nsamples:
             # close file when finish writing.
